@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wave</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#D55F45">
+  <link rel="icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .book-detail-top { display:flex; align-items:center; min-height:42px; margin:0 0 8px; }
+    .book-detail-top .icon-btn { flex:0 0 auto; }
+    .book-hero { align-items:flex-start; gap:28px; }
+    .book-info { min-width:0; }
+    .book-info .book-title { overflow-wrap:anywhere; line-height:1.12; max-width: min(100%, 760px); }
+    .book-meta-line { margin-top:7px; color:var(--muted, #999); font-size:14px; }
+    .book-info .play-btn { margin-top:22px; }
+    .book-chapter-panel { position:fixed; z-index:80; top:12px; right:12px; bottom:calc(var(--bottom-player-height, 96px) + 12px); width:min(380px, calc(100vw - 24px)); background:#181818; border:1px solid #282828; border-radius:16px; box-shadow:0 16px 40px rgba(0,0,0,.55); transform:translateX(calc(100% + 24px)); transition:transform .22s cubic-bezier(.2,.8,.2,1); display:flex; flex-direction:column; padding:16px; overflow:hidden; }
+    .book-chapter-panel.open { transform:translateX(0); }
+    .book-chapter-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:12px; border-bottom:1px solid #282828; }
+    .book-chapter-panel-title { font-size:16px; font-weight:700; letter-spacing:0.01em; }
+    .book-chapter-panel-card { margin-top:12px; background:#222222; border-radius:12px; padding:12px; display:flex; align-items:center; gap:12px; }
+    .book-chapter-panel-card .thumb { width:48px; height:48px; border-radius:8px; flex:none; }
+    .book-chapter-panel-card-meta { min-width:0; }
+    .book-chapter-panel-book { color:var(--text); font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .book-chapter-panel-sub { color:var(--muted); font-size:12px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .book-chapter-list-panel { overflow-y:auto; min-height:0; flex:1; margin-top:12px; background:#222222; border-radius:12px; padding:6px; }
+    .book-chapter-list-panel::-webkit-scrollbar { width:6px; }
+    .book-chapter-list-panel::-webkit-scrollbar-thumb { background:#3a3a3a; border-radius:999px; }
+    .chapter-panel-item { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; border:0; border-radius:8px; padding:10px 10px; text-align:left; color:var(--muted); background:transparent; cursor:pointer; font:inherit; font-size:14px; }
+    .chapter-panel-item:hover { background:#2c2c2c; color:var(--text); }
+    .chapter-panel-item.active { color:var(--accent); background:rgba(213,95,69,.14); font-weight:600; }
+    .chapter-panel-num { flex:0 0 22px; font-size:12px; color:inherit; opacity:.75; }
+    .chapter-panel-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .chapter-panel-item small { flex:0 0 auto; color:var(--muted); font-size:12px; }
+    .chapter-panel-empty { color:var(--muted); padding:20px 12px; font-size:14px; }
+    .book-hero { align-items:stretch; gap:26px; }
+    .book-cover .thumb { width:210px; height:210px; border-radius:16px; }
+    .book-info { min-width:0; flex:1; display:flex; flex-direction:column; justify-content:space-between; min-height:210px; }
+    .book-by-line { margin-top:8px; color:var(--text); font-size:16px; font-weight:500; }
+    .book-actions { display:flex; align-items:center; gap:12px; margin-top:16px; }
+    .book-rect-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:42px; padding:0 20px; border-radius:10px; border:0; font:inherit; font-size:15px; font-weight:600; cursor:pointer; transition:background .15s ease, transform .1s ease; }
+    .book-rect-btn:active { transform:scale(0.97); }
+    .book-rect-btn.primary { background:var(--accent); color:#fff; }
+    .book-rect-btn.primary:hover { background:var(--accent-hover); }
+    .book-rect-btn.secondary { background:var(--surface2); color:var(--text); border:1px solid var(--surface3); }
+    .book-rect-btn.secondary:hover { background:var(--surface3); }
+    .book-time, #bookTimeNow, #bookTimeTotal { font-variant-numeric:tabular-nums; }
+    @media (max-width:650px) { .book-hero { flex-direction:column; gap:18px; } .book-chapter-panel { bottom:82px; } }
+
+.book-shelf { display:flex; gap:18px; overflow-x:auto; padding:4px 0 12px; scrollbar-width:thin; }
+.book-shelf::-webkit-scrollbar { height:8px; }
+.book-shelf::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:999px; }
+.book-shelf .card { flex:0 0 132px; width:132px; }
+.book-shelf .card .thumb { width:100%; height:132px; border-radius:12px; }
+.book-shelf .card .card-title { font-size:13px; margin-top:8px; }
+.book-shelf .card .card-sub { font-size:11.5px; }
+.folder-shelf-block { margin-top:18px; }
+.folder-shelf-head { display:flex; align-items:center; justify-content:space-between; }
+.folder-shelf-count { font-size:14px; color:var(--muted); }
+.book-progress-ring { position:relative; width:42px; height:42px; display:inline-flex; align-items:center; justify-content:center; flex:none; margin-left:4px; }
+.book-progress-ring .ring-track { stroke:var(--surface3); }
+.book-progress-ring .ring-fill { stroke:var(--accent); transition:stroke-dashoffset .25s ease; }
+.book-progress-ring .ring-label { position:absolute; font-size:10px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- top bar: logo and search -->
+    <header class="topbar">
+      <div class="brand">
+        <img src="icon-192.png" alt="">
+        <h1>Wave</h1>
+      </div>
+
+      <div class="search">
+        <span class="ico" data-icon="search" data-size="20"></span>
+        <input id="search" type="search" placeholder="Search songs, artists, albums" autocomplete="off">
+      </div>
+
+      <div class="mode-switch" role="tablist" aria-label="Listen, watch or read">
+        <button class="mode-btn active" id="musicModeBtn" role="tab" aria-selected="true">Listen</button>
+        <span class="mode-divider">|</span>
+        <button class="mode-btn" id="videoModeBtn" role="tab" aria-selected="false">Watch</button>
+        <span class="mode-divider">|</span>
+        <button class="mode-btn" id="readModeBtn" role="tab" aria-selected="false">Read</button>
+      </div>
+    </header>
+
+    <!-- horizontal menu -->
+    <nav class="tabs" id="tabs"></nav>
+
+    <!-- the page for the selected tab -->
+    <main class="content" id="content"></main>
+
+    <!-- now playing bar -->
+    <footer class="player">
+      <div class="np">
+        <div id="npArt"></div>
+        <div class="np-text">
+          <div class="np-title" id="npTitle">Nothing playing</div>
+          <div class="np-artist" id="npArtist">Pick a song to start</div>
+        </div>
+        <button class="icon-btn heart-btn" id="npHeart" title="Add to Favourites" aria-label="Add to Favourites" disabled></button>
+      </div>
+
+      <div class="center">
+        <div class="controls">
+          <button class="icon-btn" id="shuffleBtn" title="Shuffle" aria-label="Shuffle" data-icon="shuffle"></button>
+          <button class="icon-btn" id="prevBtn" title="Previous" aria-label="Previous" data-icon="prev" data-size="28"></button>
+          <button class="play-btn" id="playBtn" title="Play / Pause" aria-label="Play or pause" data-icon="play" data-size="28"></button>
+          <button class="icon-btn" id="nextBtn" title="Next" aria-label="Next" data-icon="next" data-size="28"></button>
+          <button class="icon-btn" id="loopBtn" title="Repeat this song" aria-label="Repeat this song" data-icon="repeatone"></button>
+        </div>
+        <div class="seek">
+          <span id="timeNow">0:00</span>
+          <input type="range" id="progress" min="0" max="100" step="0.1" value="0">
+          <span id="timeTotal">0:00</span>
+        </div>
+      </div>
+
+      <div class="right">
+        <button class="icon-btn" id="queueBtn" title="Queue" aria-label="Show queue" data-icon="queue"></button>
+        <canvas id="viz" width="220" height="72"></canvas>
+        <button class="icon-btn" id="muteBtn" title="Mute" aria-label="Mute" data-icon="volume"></button>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+      </div>
+    </footer>
+
+    <!-- audiobook bar (Read mode) -->
+    <footer class="book-bar" id="bookBar">
+      <div class="np">
+        <div id="bookArt"></div>
+        <div class="np-text">
+          <div class="np-title" id="bookTitle">Nothing playing</div>
+          <div class="np-artist" id="bookSub">Pick an audiobook to start</div>
+        </div>
+      </div>
+
+      <div class="center">
+        <div class="controls">
+          <button class="icon-btn" id="bookPrev" title="Previous chapter" aria-label="Previous chapter" data-icon="prev"></button>
+          <button class="icon-btn skip-btn" id="bookBack" title="Back 15 seconds" aria-label="Back 15 seconds"></button>
+          <button class="play-btn" id="bookPlay" title="Play / Pause" aria-label="Play or pause" data-icon="play" data-size="28"></button>
+          <button class="icon-btn skip-btn" id="bookFwd" title="Forward 30 seconds" aria-label="Forward 30 seconds"></button>
+          <button class="icon-btn" id="bookNext" title="Next chapter" aria-label="Next chapter" data-icon="next"></button>
+        </div>
+        <div class="seek">
+          <span id="bookTimeNow">0:00</span>
+          <input type="range" id="bookSeek" min="0" max="100" step="0.1" value="0" aria-label="Seek through chapter">
+          <span id="bookTimeTotal">0:00</span>
+        </div>
+      </div>
+
+      <div class="right book-right">
+        <button class="icon-btn" id="bookChapters" title="View chapters" aria-label="View chapters" data-icon="book"></button>
+        <button class="speed-btn" id="bookSpeed" title="Playback speed" aria-label="Playback speed">1&times;</button>
+      </div>
+    </footer>
+
+    <!-- audiobook chapters drawer, styled like the lyrics side panel -->
+    <aside class="book-chapter-panel" id="bookChapterPanel" aria-label="Audiobook chapters">
+      <div class="book-chapter-panel-head">
+        <div class="book-chapter-panel-title">Chapters</div>
+        <button class="icon-btn" id="bookChapterClose" title="Close chapters" aria-label="Close chapters" data-icon="close"></button>
+      </div>
+      <div class="book-chapter-list-panel" id="bookChapterList"></div>
+    </aside>
+
+    <!-- full-screen now playing view -->
+    <section class="now-playing-screen" id="nowPlayingScreen" aria-hidden="true">
+      <header class="np-screen-header">
+        <button class="icon-btn np-close" id="closeNowPlaying" aria-label="Close player" title="Back to library" data-icon="down"></button>
+        <div class="np-mode-switch" role="tablist" aria-label="Player view">
+          <button class="np-mode active" id="songModeBtn" role="tab" aria-selected="true">Songs</button>
+          <span class="np-mode-divider">|</span>
+          <button class="np-mode" id="lyricsModeBtn" role="tab" aria-selected="false">Lyrics</button>
+        </div>
+        <span class="np-header-spacer"></span>
+      </header>
+      <div class="np-screen-body">
+        <section class="np-song-view" id="npSongView">
+          <div class="np-large-art" id="npLargeArt"></div>
+          <div class="np-song-info">
+            <div class="np-song-text">
+              <div class="np-large-title" id="npLargeTitle">Nothing playing</div>
+              <div class="np-large-artist" id="npLargeArtist">Choose a song from your library</div>
+              <div class="np-album-name" id="npAlbumName"></div>
+            </div>
+            <button class="icon-btn heart-btn" id="fullHeart" title="Add to Favourites" aria-label="Add to Favourites" disabled></button>
+          </div>
+          <div class="np-screen-seek">
+            <input type="range" id="fullProgress" min="0" max="100" step="0.1" value="0" aria-label="Seek through song">
+            <div class="np-screen-times"><span id="fullTimeNow">0:00</span><span id="fullTimeTotal">0:00</span></div>
+          </div>
+          <div class="np-screen-controls">
+            <button class="icon-btn" id="fullShuffleBtn" aria-label="Shuffle" title="Shuffle" data-icon="shuffle"></button>
+            <button class="icon-btn" id="fullPrevBtn" aria-label="Previous song" title="Previous" data-icon="prev" data-size="30"></button>
+            <button class="play-btn np-big-play" id="fullPlayBtn" aria-label="Play" title="Play" data-icon="play" data-size="32"></button>
+            <button class="icon-btn" id="fullNextBtn" aria-label="Next song" title="Next" data-icon="next" data-size="30"></button>
+            <button class="icon-btn" id="fullLoopBtn" aria-label="Repeat" title="Repeat" data-icon="repeatone"></button>
+          </div>
+        </section>
+        <section class="np-lyrics-view" id="npLyricsView" hidden>
+          <div class="lyrics-heading">Lyrics</div>
+          <div class="lyrics-song-title" id="lyricsSongTitle"></div>
+          <div class="lyrics-content" id="lyricsContent">Lyrics aren't available for this song.</div>
+        </section>
+      </div>
+    </section>
+
+    <!-- queue panel (slides in on the right) -->
+    <aside class="queue" id="queuePanel"></aside>
+  </div>
+
+  <section class="video-screen" id="videoScreen" aria-hidden="true">
+    <header class="video-header">
+      <button class="icon-btn" id="closeVideo" title="Back to library" aria-label="Close video" data-icon="down"></button>
+      <div class="video-title" id="videoTitle"></div>
+      <div class="video-nav">
+        <button class="icon-btn" id="videoPrev" title="Previous video" aria-label="Previous video" data-icon="prev"></button>
+        <button class="icon-btn" id="videoNext" title="Next video" aria-label="Next video" data-icon="next"></button>
+      </div>
+    </header>
+    <video id="videoPlayer" controls playsinline></video>
+  </section>
+
+  <div class="menu" id="menu"></div>
+  <div class="toast" id="toast"></div>
+
+  <audio id="player"></audio>
+  <audio id="bookPlayer"></audio>
+  <input type="file" id="filePicker" class="hidden" accept="audio/*" multiple>
+  <input type="file" id="folderPicker" class="hidden" webkitdirectory>
+
+  <script src="jsmediatags.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
